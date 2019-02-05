@@ -1,0 +1,182 @@
+---
+title: "PHP 2517 Homework #1"
+author: "Blain Morin"
+date: "February 11, 2019"
+output: pdf_document
+header-includes:
+- \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+
+### Set knit options
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE)
+
+
+### Load required libraries
+library(lme4)
+library(ggplot2)
+library(dplyr)
+library(stargazer)
+library(readr)
+library(extrafont)
+library(grid)
+library(gridExtra)
+
+
+### Load Data
+cd4 = read_csv("cd4.csv")
+
+### Set Seed
+set.seed(121)
+
+```
+
+# GH Chapter 11: Exercise 4
+
+## a.) Graph the outcome (the CD4 percentage, on the square root scale) for 10 children as a function of time.
+
+```{r}
+
+### Get 10 random IDs
+ten.kid.ids = cd4 %>%
+  select(newpid) %>%
+  distinct() %>%
+  sample_n(size = 10)
+
+### Get data for 10 IDs
+ten.kid.data = cd4 %>%
+  filter(newpid %in% as.numeric(as.matrix(ten.kid.ids))) %>%
+  mutate(newpid = as.factor(newpid))
+
+### Plot for 10 random individuals
+ten.kid.data %>%
+  ggplot(aes(x = time, y = sqrt(CD4PCT))) +
+  geom_line(aes(group = newpid, color = newpid)) +
+  geom_point(aes(color = newpid)) +
+  ylab("sqrt(CD4PCT)") +
+  xlab("Time") +
+  ggtitle("CD4 Trajectories for 10 Random Children") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+  
+
+```
+
+## b.) Each child’s data has a time course that can be summarized by a linear fit. Estimate these lines and plot them for 10 children.
+
+```{r}
+
+### Plot individually fitted LMs
+ten.kid.data %>%
+  ggplot(aes(x = time, y = sqrt(CD4PCT))) +
+  stat_smooth(aes(group = newpid, color = newpid), method = "lm", se = FALSE) +
+  geom_point(aes(color = newpid)) +
+  ylab("sqrt(CD4PCT)") +
+  xlab("Time") +
+  ggtitle("Individual LM for 10 Random Children") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+```
+
+## c.) Set up a model for the children’s slopes and intercepts as a function of the treatment and age at baseline. Estimate this model using the two-step procedure–first estimate the intercept and slope separately for each child, then fit the between-child models using the point estimates from the first step.
+
+```{r, fig.height=8}
+
+### Change treatment to factor
+cd4 = cd4 %>%
+  mutate(treatmnt = as.factor(treatmnt))
+
+### Function that gets intercepts from LM
+get.ints = function(x, y) {
+  
+  model.i = lm(y ~ x)
+  return(coef(model.i)[1])
+  
+}
+
+
+### Function that gets slopes from LM
+get.slopes = function(x, y) {
+  
+  model.i = lm(y ~ x)
+  return(coef(model.i)[2])
+  
+}
+
+### Get ints and slopes for each individual regression
+cd4 = cd4 %>%
+  group_by(newpid) %>%
+  mutate(beta0 = get.ints(x = time, y = sqrt(CD4PCT))) %>%
+  mutate(beta1 = get.slopes(x = time, y = sqrt(CD4PCT))) %>%
+  ungroup()
+
+### Regress intercept on tx and age
+b0.model = lm(beta0 ~ treatmnt + baseage, data = cd4)
+b0.model1 = lm(beta0 ~ treatmnt + log(baseage), data = cd4)
+
+
+### REsidual plots for intercept regression
+b0.resid.plot = ggplot(b0.model) +
+  geom_point(aes(x = .fitted, y = .resid)) +
+  xlab("Fitted") +
+  ylab("Residual") +
+  ggtitle("Residual Plot: Linear Age vs Intercept") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+
+b0.resid.plot1 = ggplot(b0.model1) +
+  geom_point(aes(x = .fitted, y = .resid)) +
+  xlab("Fitted") +
+  ylab("Residual") +
+  ggtitle("Residual Plot: log(Age) vs Intercept") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+
+
+### Regress slope on tx and age
+b1.model = lm(beta1 ~ treatmnt + baseage, data = cd4)
+b1.model1 = lm(beta1 ~ treatmnt + log(baseage), data = cd4)
+
+
+### Residual plots for slope
+b1.resid.plot = ggplot(b1.model) +
+  geom_point(aes(x = .fitted, y = .resid)) +
+  xlab("Fitted") +
+  ylab("Residual") +
+  ggtitle("Residual Plot: Linear Age vs Slope") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+
+b1.resid.plot1 = ggplot(b1.model1) +
+  geom_point(aes(x = .fitted, y = .resid)) +
+  xlab("Fitted") +
+  ylab("Residual") +
+  ggtitle("Residual Plot: log(Age) vs Slope") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+
+### Arrange plots
+grid.arrange(b0.resid.plot,
+             b0.resid.plot1,
+             b1.resid.plot,
+             b1.resid.plot1,
+             nrow = 4)
+```
+
+```{r, results = 'asis'}
+
+stargazer(b0.model1, b1.model1,
+          header = FALSE,
+          table.placement = 'H',
+          title = "Regression on Intercept and Slope",
+          covariate.labels = c("Treatment = 2",
+                               "log(baseage)"),
+          notes = "Individuals with only one observation do not have a slope estimate.")
+
+```
