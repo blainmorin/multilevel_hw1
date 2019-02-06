@@ -2,7 +2,9 @@
 title: "PHP 2517 Homework #1"
 author: "Blain Morin"
 date: "February 11, 2019"
-output: pdf_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
 header-includes:
 - \usepackage{float}
 ---
@@ -16,12 +18,15 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = TR
 ### Load required libraries
 library(lme4)
 library(ggplot2)
+library(arm)
 library(dplyr)
 library(stargazer)
 library(readr)
 library(extrafont)
 library(grid)
 library(gridExtra)
+library(sjPlot)
+library(texreg)
 
 
 ### Load Data
@@ -32,7 +37,7 @@ set.seed(121)
 
 ```
 
-# GH Chapter 11: Exercise 4
+# Q1 GH Chapter 11: Exercise 4
 
 ## a.) Graph the outcome (the CD4 percentage, on the square root scale) for 10 children as a function of time.
 
@@ -180,3 +185,46 @@ stargazer(b0.model1, b1.model1,
           notes = "Individuals with only one observation do not have a slope estimate.")
 
 ```
+
+# Q2 GH Chapter 12: Exercise 2
+
+## a.) Write a model predicting CD4 percentage as a function of time with varying intercepts across children. Fit using lmer() and interpret the coefficient for time.
+
+$$  Level 1 : CD4PCT_{ij} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
+
+$$  Level 2 : \alpha_j \sim \mathcal{N}(\mu, \tau^2) $$
+
+```{r, results = 'asis', echo = TRUE}
+
+rand.int.a = lmer(sqrt(CD4PCT) ~ time + (1 | newpid), data = cd4)
+texreg(rand.int.a, caption.above = TRUE,
+       caption = "Random Intercept Model",
+       custom.model.names = "sqrt(CD4PCT)",
+       float.pos = 'H')
+
+```
+
+
+## b.) Extend the model in (a) to include child-level predictors (that is, group-level predictors) for treatment and age at baseline. Fit using lmer() and interpret the coefficients on time, treatment, and age at baseline.
+
+$$  Level 1 : CD4PCT_{ij} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
+
+$$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1Age, \tau^2) $$
+
+```{r, results = 'asis', echo = TRUE}
+
+rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + baseage + (1|newpid), data = cd4)
+texreg(rand.int.b, caption.above = TRUE,
+       caption = "Random Intercept Model with Child Level Predictors",
+       custom.model.names = "sqrt(CD4PCT)",
+       float.pos = 'H')
+
+```
+
+
+
+
+
+
+
+
