@@ -220,7 +220,7 @@ Again, level 1 describes the within child variability:
 $$  Level 1 : CD4PCT_{ij} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
 
 Level 2 describes the between children variability (now includes group level predictors):
-$$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1Age, \tau^2) $$
+$$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1 log(baseage), \tau^2) $$
 
 Here is the code we used to fit the model:
 ```{r, results = 'asis', echo = TRUE}
@@ -230,10 +230,14 @@ rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + log(baseage) + (1|newpid), da
 texreg(rand.int.b, caption.above = TRUE,
        caption = "Random Intercept Model with Child Level Predictors",
        custom.model.names = "sqrt(CD4PCT)",
-       float.pos = 'H')
+       float.pos = 'H',
+       digits = 3)
 
 ```
 
+* The coefficient on time ($\beta$) is -.001. This means that we expect the square root of CD4% to decrease by .001 for each additional day on average, all else equal.
+* The coefficeint on treatmnt2 ($\gamma_0$) is .32. This means that we expect the square root of CD4% to be .32 higher for the children in treatment group 2 than the children in treatment group 1 on average, all else equal.
+* The coefficient on log(baseage) ($\gamma_1$) is -.263. This means that for a 1% increase in baseage, we expect the square root of CD4% to decrease by ($.263 * log(1.01) = .0026$).
 
 c.) Investigate the change in partial pooling from (a) to (b) both graphically and numerically.
 
