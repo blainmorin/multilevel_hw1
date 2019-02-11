@@ -88,6 +88,8 @@ ten.kid.data %>%
 
 ## c.) Set up a model for the children’s slopes and intercepts as a function of the treatment and age at baseline. Estimate this model using the two-step procedure–first estimate the intercept and slope separately for each child, then fit the between-child models using the point estimates from the first step.
 
+We ran regressed each child's intercept and slope on their treatment and age at baseline. We also checked the log transformation for age at baseline. Here are residual plots for each of the four regressions:
+
 ```{r, fig.height=8}
 
 ### Change treatment to factor
@@ -176,6 +178,10 @@ grid.arrange(b0.resid.plot,
              nrow = 4)
 ```
 
+We see that the log transformation of baseline age is a slight improvement for both the intercept and slope regressions. For the intercept plots, the log transformation spreads the fitted values more evenly along the x axis. For the slope plots, the log transformation of basline age seems to help with the heteroskedasticity seen in the linear residual plot. 
+
+Here are our regression results for the intercept and slope using the log transformation for baseline age:
+
 ```{r, results = 'asis'}
 
 stargazer(b0.model1, b1.model1,
@@ -187,6 +193,12 @@ stargazer(b0.model1, b1.model1,
           notes = "Individuals with only one observation do not have a slope estimate.")
 
 ```
+
+We see that treatment and baseline age do not have a significant effect on the slope of the regression, but they do have a significant effect on the intercept.
+
+* On average, being in treatment 2 is associated with a regression intercept that is .451 higher than being in treatment 1, all else equal.
+
+* On average, a 1% increase in baseage is associated with a regression intercept that is $.349 * log(1.01) = .003$ lower, all else equal. 
 
 # Q2 GH Chapter 12: Exercise 2
 
@@ -203,7 +215,10 @@ Here is the regression result:
 
 ```{r, results = 'asis', echo = TRUE}
 
+### Run random intercept model a
 rand.int.a = lmer(sqrt(CD4PCT) ~ time + (1 | newpid), data = cd4)
+
+### Make a table
 texreg(rand.int.a, caption.above = TRUE,
        caption = "Random Intercept Model",
        custom.model.names = "sqrt(CD4PCT)",
@@ -225,8 +240,10 @@ $$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1 log(basea
 Here is the code we used to fit the model:
 ```{r, results = 'asis', echo = TRUE}
 
+### Run random intercept model b
 rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + log(baseage) + (1|newpid), data = cd4)
 
+### Make a table
 texreg(rand.int.b, caption.above = TRUE,
        caption = "Random Intercept Model with Child Level Predictors",
        custom.model.names = "sqrt(CD4PCT)",
@@ -239,11 +256,11 @@ texreg(rand.int.b, caption.above = TRUE,
 * The coefficeint on treatmnt2 ($\gamma_0$) is .32. This means that we expect the square root of CD4% to be .32 higher for the children in treatment group 2 than the children in treatment group 1 on average, all else equal.
 * The coefficient on log(baseage) ($\gamma_1$) is -.263. This means that for a 1% increase in baseage, we expect the square root of CD4% to decrease by ($.263 * log(1.01) = .0026$).
 
-c.) Investigate the change in partial pooling from (a) to (b) both graphically and numerically.
+## c.) Investigate the change in partial pooling from (a) to (b) both graphically and numerically.
 
 Since treatment and age at baseline are group level predictors, we expect that they may help explain some of the between group variation and leave the within group variation unchanged. First, we numerically compare the differences in the estimated within group variance ($\sigma^2$)  and between group variance ($\tau^2$) between model (a) and model (b):
 
-```{r, results = 'asis'}
+```{r, results = 'asis', echo = TRUE}
 
 ### Get model summaries
 a.model = summary(rand.int.a)
@@ -269,11 +286,11 @@ stargazer(c.data, header = FALSE,
 
 ```
 
-We see that the within child standard error ($\sigma$) is basically unchanged between model (a) and model (b). We see that there is a slight reduction in the between children standard errors ($\tau$), from 1.981 to 1.926. Thus, the group level predictors, treatment and age at baseline, explain a small amount of the variation between children. 
+As expected, we see that the within child standard error ($\sigma$) is basically unchanged between model (a) and model (b). We see that there is a slight reduction in the between children standard errors ($\tau$), from 1.981 to 1.926. Thus, the group level predictors(treatment and age at baseline), explain a small amount of the variation between children. 
 
 We also look at the difference in partial pooling graphically: 
 
-```{r}
+```{r, echo = TRUE}
 
 ### Complete pooling case
 complete.pooling = lm(sqrt(CD4PCT) ~ time, data = cd4)
@@ -319,7 +336,7 @@ Level 2 describes the between county variation:
 $$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma countysamples_j ,\tau ^2) $$
 
 Here is the code and a table of the regression results: 
-```{r, results = 'asis'}
+```{r, results = 'asis', echo = TRUE}
 
 ### Read in data
 srrs2 = read.table ("srrs2.dat", header=T, sep=",")
@@ -425,4 +442,8 @@ b.graph.data %>%
 We see that the the standard error of the sample mean decreases at a decreasing rate as the number of observations within each cluster (n) increases. The same is true of the number of clusters (J).  
 
 
+# Appendix: R Code
 
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+
+```
