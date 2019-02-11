@@ -192,9 +192,14 @@ stargazer(b0.model1, b1.model1,
 
 ## a.) Write a model predicting CD4 percentage as a function of time with varying intercepts across children. Fit using lmer() and interpret the coefficient for time.
 
-$$  Level 1 : CD4PCT_{ij} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
+Level 1 decribes the within child variability:
 
+$$  Level 1 : \sqrt{CD4PCT_{ij}} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
+
+Level 2 decribes the between children variability:
 $$  Level 2 : \alpha_j \sim \mathcal{N}(\mu, \tau^2) $$
+
+Here is the regression result: 
 
 ```{r, results = 'asis', echo = TRUE}
 
@@ -202,17 +207,22 @@ rand.int.a = lmer(sqrt(CD4PCT) ~ time + (1 | newpid), data = cd4)
 texreg(rand.int.a, caption.above = TRUE,
        caption = "Random Intercept Model",
        custom.model.names = "sqrt(CD4PCT)",
-       float.pos = 'H')
+       float.pos = 'H',
+       digits = 3)
 
 ```
 
+The coefficient on time, $\beta$, is -.001. This means that for each additional day, we expect the square root of CD4 percentage to decrease by .001.
 
 ## b.) Extend the model in (a) to include child-level predictors (that is, group-level predictors) for treatment and age at baseline. Fit using lmer() and interpret the coefficients on time, treatment, and age at baseline.
 
+Again, level 1 describes the within child variability:
 $$  Level 1 : CD4PCT_{ij} \sim \mathcal{N}(\alpha_j +\beta time_{ij} ,\sigma ^2)  $$
 
+Level 2 describes the between children variability (now includes group level predictors):
 $$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1Age, \tau^2) $$
 
+Here is the code we used to fit the model:
 ```{r, results = 'asis', echo = TRUE}
 
 rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + log(baseage) + (1|newpid), data = cd4)
@@ -257,7 +267,7 @@ stargazer(c.data, header = FALSE,
 
 We see that the within child standard error ($\sigma$) is basically unchanged between model (a) and model (b). We see that there is a slight reduction in the between children standard errors ($\tau$), from 1.981 to 1.926. Thus, the group level predictors, treatment and age at baseline, explain a small amount of the variation between children. 
 
-We also look at the difference in partial pooling graphically. 
+We also look at the difference in partial pooling graphically: 
 
 ```{r}
 
@@ -291,10 +301,20 @@ ten.kid.data2 %>%
 
 ```
 
-Graphically, we see that there is not much difference between the red and blue lines. Thus, there is not much difference in the partial pooling. 
+Graphically, we see that there is not much difference between the red and blue lines. Thus, there is not much difference in the partial pooling. This confirms what we observed from the small change in $\tau$ seen in Table 4.  
 
-# Q3 GH Chapter 12: Exercise 4
+# Q3 GH Chapter 12: Exercise 5
 
+## Using the radon data, include county sample size as a group-level predictor and write the varying-intercept model. Fit this model using lmer().
+
+Level 1 describes the within county variation:
+
+$$  Level 1 : log(radon)_{ij} \sim \mathcal{N}(\alpha_j ,\sigma ^2) $$
+
+Level 2 describes the between county variation:
+$$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma countysamples_j ,\tau ^2) $$
+
+Here is the code and a table of the regression results: 
 ```{r, results = 'asis'}
 
 ### Read in data
