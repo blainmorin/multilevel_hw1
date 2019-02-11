@@ -94,6 +94,8 @@ ten.kid.data %>%
 cd4 = cd4 %>%
   mutate(treatmnt = as.factor(treatmnt))
 
+cd4 = cd4[complete.cases(cd4),]
+
 ### Function that gets intercepts from LM
 get.ints = function(x, y) {
   
@@ -213,7 +215,8 @@ $$  Level 2 : \alpha_j \sim \mathcal{N}(\mu + \gamma_0Treat + \gamma_1Age, \tau^
 
 ```{r, results = 'asis', echo = TRUE}
 
-rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + baseage + (1|newpid), data = cd4)
+rand.int.b = lmer(sqrt(CD4PCT) ~ time + treatmnt + log(baseage) + (1|newpid), data = cd4)
+
 texreg(rand.int.b, caption.above = TRUE,
        caption = "Random Intercept Model with Child Level Predictors",
        custom.model.names = "sqrt(CD4PCT)",
@@ -222,9 +225,180 @@ texreg(rand.int.b, caption.above = TRUE,
 ```
 
 
+c.) Investigate the change in partial pooling from (a) to (b) both graphically and numerically.
+
+Since treatment and age at baseline are group level predictors, we expect that they may help explain some of the between group variation and leave the within group variation unchanged. First, we numerically compare the differences in the estimated within group variance ($\sigma^2$)  and between group variance ($\tau^2$) between model (a) and model (b):
+
+```{r, results = 'asis'}
+
+### Get model summaries
+a.model = summary(rand.int.a)
+
+b.model = summary(rand.int.b)
+
+### Extract sigma and tau
+a.vars = round(c(sigma = a.model$sigma,
+           tau = a.model$varcor[[1]][1]), 3)
+
+b.vars = round(c(sigma = b.model$sigma,
+           tau = b.model$varcor[[1]][1]), 3)
 
 
+### Make a table
+c.data = bind_rows(a.vars, b.vars)
 
+rownames(c.data) = c("Model A", "Model B")
+
+stargazer(c.data, header = FALSE,
+          summary = FALSE,
+          title = "Sources of Variation")
+
+```
+
+We see that the within child standard error ($\sigma$) is basically unchanged between model (a) and model (b). We see that there is a slight reduction in the between children standard errors ($\tau$), from 1.981 to 1.926. Thus, the group level predictors, treatment and age at baseline, explain a small amount of the variation between children. 
+
+We also look at the difference in partial pooling graphically. 
+
+```{r}
+
+### Complete pooling case
+complete.pooling = lm(sqrt(CD4PCT) ~ time, data = cd4)
+
+### Get fitted values
+cd4$complete.pooling = predict(complete.pooling)
+cd4$model.a = predict(rand.int.a)
+cd4$model.b = predict(rand.int.b)
+
+### Get data for 10 IDs
+ten.kid.data2 = cd4 %>%
+  filter(newpid %in% as.numeric(as.matrix(ten.kid.ids))) %>%
+  mutate(newpid = as.factor(newpid))
+
+### Plot for 10 random kids
+ten.kid.data2 %>%
+  ggplot(aes(x = time)) +
+  facet_wrap(~newpid) +
+  geom_point(aes(y = sqrt(CD4PCT))) +
+  geom_line(aes(y = complete.pooling), color = 'darkgrey', size = 1.5) +
+  geom_line(aes(y = model.a), color = 'blue', linetype = 'solid', size = 1.5) +
+  geom_line(aes(y = model.b), color = 'red', linetype = 'dotdash', size = 1.5) +
+  xlab("Time") +
+  ggtitle("Compare Partial Pooling") +
+  labs(subtitle = "Grey = Complete Pooling, Blue = Model a, Red = Model b") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans")) 
+
+
+```
+
+Graphically, we see that there is not much difference between the red and blue lines. Thus, there is not much difference in the partial pooling. 
+
+# Q3 GH Chapter 12: Exercise 4
+
+```{r, results = 'asis'}
+
+### Read in data
+srrs2 = read.table ("srrs2.dat", header=T, sep=",")
+
+### Get only MN
+### Then transform radon into log radon
+### Then count observations in each county
+mn = srrs2 %>%
+  filter(state2 == "MN") %>%
+  mutate(log.radon = log(ifelse (activity==0, .1, activity))) %>%
+  group_by(county) %>%
+  mutate(county.samples = n()) %>%
+  ungroup()
+
+
+### Specify model
+q3 = lmer(log.radon ~ county.samples + (1 | county), data = mn)
+
+### Output a table
+texreg(q3, caption.above = TRUE,
+       caption = "Random Intercept Model with County Level Predictor",
+       custom.model.names = "log(radon)",
+       float.pos = 'H',
+       digits = 3)
+
+```
+
+
+# Bonus
+
+## a.)
+
+$$  var(\bar{Y}) = var(1/N * \sum_{j=1} ^ {J} \sum_{i = 1} ^ {n} Y_{ij}) $$
+$$  = 1/N^2 * \sum_{j=1} ^ {J} \sum_{i = 1} ^ {n} var( Y_{ij}) $$
+$$  = 1/N^2 * N(\sigma^2 + \tau^2) $$
+
+$$  = \frac{(\sigma^2 + \tau^2)}{nJ} $$
+$$  s.e.(\bar{Y}) = \sqrt{\frac{(\sigma^2 + \tau^2)}{nJ}} $$
+
+## b.)
+
+```{r}
+
+n = 1:100
+J = 10
+se.ybar = sqrt(2/(n*J))
+b.graph.data = data.frame(n = n, se = se.ybar) 
+
+b.graph.data %>%
+  ggplot(aes(x = n, y = se)) +
+  geom_point() +
+  xlab("n") +
+  ylab("se(y bar)") +
+  ggtitle("J = 10") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+
+```
+
+## c.)
+
+```{r}
+
+n = 1:100
+J = 100
+se.ybar = sqrt(2/(n*J))
+b.graph.data = data.frame(n = n, se = se.ybar) 
+
+b.graph.data %>%
+  ggplot(aes(x = n, y = se)) +
+  geom_point() +
+  xlab("n") +
+  ylab("se(y bar)") +
+  ggtitle("J = 100") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+
+```
+
+```{r}
+
+n = 1:100
+J = 1000
+se.ybar = sqrt(2/(n*J))
+b.graph.data = data.frame(n = n, se = se.ybar) 
+
+b.graph.data %>%
+  ggplot(aes(x = n, y = se)) +
+  geom_point() +
+  xlab("n") +
+  ylab("se(y bar)") +
+  ggtitle("J = 1000") +
+  theme_classic() +
+  theme(text=element_text(size=12,  family="CM Sans"))
+  
+
+```
+
+## d.)
+
+We see that the the standard error of the sample mean decreases at a decreasing rate as the number of observations within each cluster (n) increases. The same is true of the number of clusters (J).  
 
 
 
